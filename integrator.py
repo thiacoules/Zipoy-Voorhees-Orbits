@@ -20,17 +20,13 @@ def get_geodesics(M, gamma, initial_conditions, total_time):
     dh_dp = grad(engine.hamiltonian, 1)
 
     def system_dynamics(t, y):
-        # y contains [x, y, px, py]
-        q_vec = y[:2]
+        q_vec = np.array([y[0], y[1]])
         p_vec = np.array([-0.95, y[2], y[3], 3.0]) # pt, px, py, p_phi
         
-        # Hamilton's Equations: 
-        # dq/dt = dH/dp
-        # dp/dt = -dH/dq
-        dq_dt = dh_dp(q_vec, p_vec)[1:3] # we only evolve x and y
+        dq_dt = dh_dp(q_vec, p_vec)[1:3] 
         dp_dt = -dh_dq(q_vec, p_vec)
         
-        return [*dq_dt, *dp_dt]
+        return np.concatenate([dq_dt, dp_dt])
 
     # Solving the differential equations
     sol = solve_ivp(system_dynamics, [0, total_time], initial_conditions, t_eval=np.linspace(0, total_time, 1000))
