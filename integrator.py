@@ -1,3 +1,6 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import autograd.numpy as np
 from autograd import grad
 from scipy.integrate import solve_ivp
