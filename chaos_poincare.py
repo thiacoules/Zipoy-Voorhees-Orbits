@@ -9,13 +9,13 @@ def get_poincare_crossings(M, gamma, init_state, total_time):
     dh_dq = grad(engine.hamiltonian, 0)
     dh_dp = grad(engine.hamiltonian, 1)
 
-    # Constants of motion
-    pt0 = -0.96   # Energy related
-    p_phi0 = 3.2  # Angular momentum
+    # The "Goldilocks" momentum to keep orbits trapped
+    pt0 = -0.95   
+    p_phi0 = 3.0  
 
     def system_dynamics(t, state):
         x, y, px, py = state
-        if x <= 1.05: # Safeguard
+        if x <= 1.05: 
             return [0.0, 0.0, 0.0, 0.0]
             
         q_vec = np.array([x, y])
@@ -26,57 +26,58 @@ def get_poincare_crossings(M, gamma, init_state, total_time):
         
         return [dHdp[1], dHdp[2], -dHdq[0], -dHdq[1]]
 
-    # EVENT DETECTOR: Trigger exactly when the particle crosses the equator (y=0)
+    # Trigger exactly when y crosses 0
     def equator_crossing(t, state):
-        return state[1] # state[1] is y
+        return state[1] 
     
-    # We only care when it crosses from North to South to avoid double-counting
-    equator_crossing.direction = -1 
+    # Catching crossings going in one direction to map the section cleanly
+    equator_crossing.direction = 1 
 
-    # We need a very long time to get enough "punches" through the paper
     sol = solve_ivp(system_dynamics, [0, total_time], init_state, 
                     events=equator_crossing, max_step=1.0)
     
-    # sol.y_events[0] contains the [x, y, px, py] exact state at every crossing!
     return sol.y_events[0]
 
 # --- SIMULATION SETUP ---
 M = 1.0
-gamma = 2.0  # We use a Prolate (cigar-shaped) mass here, as it induces extreme chaos!
-time_span = 50000  # Massive integration time to generate thousands of dots
+gamma = 0.5  # Oblate mass
+time_span = 10000  # 10,000 units of time to gather dots
 
 plt.figure(figsize=(9, 7))
 plt.style.use('dark_background')
-print("Calculating Chaos via Poincaré Section. This requires heavy computing...")
-print("Please wait ~15-30 seconds...")
+print("Calculating Chaos via Poincaré Section...")
+print("Finding trapped chaotic orbits. Please wait ~15 seconds...")
 
-# Launching particles from different starting distances
-# x_starts: 6.0, 7.0, 8.0, 9.0, 10.0
-starting_x = np.linspace(6.0, 10.0, 5)
+# Launching particles from a safe distance
+starting_x = np.linspace(8.0, 15.0, 6)
 colors = plt.cm.spring(np.linspace(0, 1, len(starting_x)))
+
+plotted_anything = False
 
 for i, x_start in enumerate(starting_x):
     # init_state = [x, y, px, py]
-    init = [x_start, 0.0, 0.0, 0.2] 
+    # We start them slightly off the equator (y=-0.1) so they fall towards it
+    init = [x_start, -0.1, 0.0, 0.1] 
     
     crossings = get_poincare_crossings(M, gamma, init, time_span)
     
     if len(crossings) > 0:
-        # Extract x and px at the crossings
+        plotted_anything = True
         x_cross = crossings[:, 0]
         px_cross = crossings[:, 2]
-        
-        # Scatter plot the dots
-        plt.scatter(x_cross, px_cross, s=2, color=colors[i], label=f'Initial x = {x_start}')
+        plt.scatter(x_cross, px_cross, s=4, color=colors[i], label=f'Initial x = {x_start:.1f}')
 
-plt.title("Poincaré Section: Deterministic Chaos in ZV Spacetime ($\gamma=2.0$)", fontsize=14, color='white')
+if not plotted_anything:
+    print("WARNING: Particles still escaped. Try adjusting initial conditions.")
+
+plt.title("Poincaré Section: Orbital Dynamics in ZV Spacetime ($\gamma=0.5$)", fontsize=14, color='white')
 plt.xlabel("Radial Distance x at Equator")
 plt.ylabel("Radial Momentum $p_x$ at Equator")
 plt.axhline(0, color='white', linewidth=0.5, linestyle='--')
 
-# Styling
 ax = plt.gca()
 ax.tick_params(colors='white')
 ax.grid(color='gray', linestyle=':', linewidth=0.3)
-plt.legend(loc='upper right', markerscale=5)
+if plotted_anything:
+    plt.legend(loc='upper right', markerscale=3)
 plt.show()
